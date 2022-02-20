@@ -1,8 +1,28 @@
+import math
+from PIL import Image, ImageDraw
 import numpy as np
-from PIL import Image
 
 
-# 2
+def part1(rows, col):
+    image1 = np.zeros((rows, col), dtype=np.uint8)
+    imageBlack = Image.fromarray(image1)
+    imageBlack.save('myBlack.png')
+    image2 = np.full((rows, col), 255, dtype=np.uint8)
+    imageWhite = Image.fromarray(image2)
+    imageWhite.save('myWhite.png')
+    image3 = np.full((rows, col, 3), (255, 0, 0), dtype=np.uint8)
+    imageRed = Image.fromarray(image3)
+    imageRed.save('myRed.png')
+    image4 = np.zeros((rows, col, 3), dtype=np.uint8)
+    # np.full((rows, col, 3), [100, 50, 200], dtype=np.uint8)
+    for x in range(0, rows):
+        for y in range(0, col):
+            v = round((x + y) % 256)
+            image4[x][y] = (v, v, v)
+    imageReg = Image.fromarray(image4)
+    imageReg.save('myReg.png')
+
+
 class Color3:
     def __init__(self, r, g, b):
         self.r = r
@@ -19,7 +39,6 @@ class Color3:
         return self.b
 
 
-# 2
 class Image3:
     def __init__(self, w, h):
         self.w = w
@@ -48,10 +67,97 @@ class Image3:
         Image.fromarray(image_arr).save(filename)
 
 
+def part3_1(x0, y0, image, color):
+    for i in range(0, 13):
+        alpha = 2 * math.pi * i / 13
+        x1 = 100 + 95 * math.cos(alpha)
+        y1 = 100 + 95 * math.sin(alpha)
+        for t in np.arange(0, 1, 0.01):
+            x = round(x0 * (1 - t) + x1 * t)
+            y = round(y0 * (1 - t) + y1 * t)
+            image.putpixel((x, y), color)
+        image.save('var1.png')
+    image.save('var1.png')
+
+
+def part3_2(x0, y0, image, color):
+    for i in range(0, 13):
+        alpha = 2 * math.pi * i / 13
+        x1 = 100 + 95 * math.cos(alpha)
+        y1 = 100 + 95 * math.sin(alpha)
+        for x in np.arange(x0, x1, 1):
+            t = (x - x0) / (x1 - x0)
+            y = round(y0 * (1 - t) + y1 * t)
+            image.putpixel((round(x), y), color)
+    image.save('var2.png')
+
+
+def part3_3(x0, y0, image, color):
+    for i in range(0, 13):
+        alpha = 2 * math.pi * i / 13
+        x1 = 100 + 95 * math.cos(alpha)
+        y1 = 100 + 95 * math.sin(alpha)
+        x0 = 100
+        y0 = 100
+        steep = False
+        if abs(x0 - x1) < abs(y0 - y1):
+            x0, y0 = y0, x0
+            x1, y1 = y1, x1
+            steep = True
+        if x0 > x1:
+            x0, x1 = x1, x0
+            y0, y1 = y1, y0
+        for x in np.arange(x0, x1, 1):
+            t = (x - x0) / (x1 - x0)
+            y = round(y0 * (1 - t) + y1 * t)
+            if steep:
+                image.putpixel((round(y), round(x)), color)
+            else:
+                image.putpixel((round(x), round(y)), color)
+    image.save('var3.png')
+
+
+def part3_4(x0, y0, x1, y1, image, color):
+    steep = False
+    if abs(x0 - x1) < abs(y0 - y1):
+        x0, y0 = y0, x0
+        x1, y1 = y1, x1
+        steep = True
+    if x0 > x1:
+        x0, x1 = x1, x0
+        y0, y1 = y1, y0
+    dx = x1 - x0
+    dy = y1 - y0
+    if dx == 0 and dy == 0:
+        return
+    derror = abs(dy / dx)
+    error = 0
+    y = y0
+    for x in np.arange(x0, x1, 1):
+        if steep:
+            image.putpixel((round(y), round(x)), color)
+        else:
+            image.putpixel((round(x), round(y)), color)
+        error = error + derror
+        if error > 0.5:
+            if y1 > y0:
+                y = y + 1
+            else:
+                y = y - 1
+            error = error - 1
+
+
+def part3_4draw(image, color):
+    for i in range(0, 13):
+        part3_4(100, 100, 100 + 95 * math.cos(2 * math.pi * i / 13), 100 + 95 * math.sin(2 * math.pi * i / 13), image,
+                color)
+        image.save('var4.png')
+
+
 class OBJ3DModel:
     def __init__(self, source_file_path):
-        self.verticles = None
-        self.polygons = None
+        self.__verticles = None
+        self.__polygons = None
         self.source_file_path = source_file_path
         self.parse()
 
@@ -70,152 +176,63 @@ class OBJ3DModel:
                 polygon_infos = line.split()[1:]
                 polygon = []
                 for polygon_info in polygon_infos:
-                    polygon.append(polygon_info.split('/'))
-                polygons.append(polygon)
+                    polygon.append(int(polygon_info.split('/')[0]) - 1)
+                polygons.append(polygon[:3])
 
-        self.verticles = np.array(verticles)
-        self.polygons = np.array(polygons)
+        verticles = list(map(lambda x: list(map(lambda b: float(b), x)), verticles))
+
+        self.__verticles = np.array(verticles)
+        self.__polygons = np.array(polygons)
 
     def get_verticles(self):
-        return self.verticles
+        return self.__verticles
 
     def get_polygons(self):
-        return self.polygons
+        return self.__polygons
+
+    def get_polygons_points(self):
+        return list(map(lambda x: list(map(lambda b: self.__verticles[b], x)), self.__polygons))
 
 
-# 3
-def line_v1(x0, y0, x1, y1, image3, color3):
-    for t in np.arange(0, 1, 0.01):
-        x = int(x0 * (1. - t) + x1 * t)
-        y = int(y0 * (1. - t) + y1 * t)
-        image3.set(x, y, color3)
-    return image3
+def part5(model: OBJ3DModel, scale: int = 10, shift: int = 500):
+    image1 = np.zeros((1000, 1000), dtype=np.uint8)
+    imageBlack = Image.fromarray(image1)
+    for point in model.get_verticles():
+        x = round(scale * point[0] + shift)
+        y = round(-scale * point[1] + shift)
+        if 0 <= x < 1000 and 0 <= y < 1000:
+            imageBlack.putpixel((x, y), 255)
+    imageBlack.save('vertex-st.png')
 
 
-# 3
-def line_v2(x0, y0, x1, y1, image3, color3):
-    for x in range(x0, x1):
-        t = (x - x0) / float(x1 - x0)
-        y = int(y0 * (1. - t) + y1 * t)
-        image3.set(x, y, color3)
-    return image3
+def part7(model: OBJ3DModel, scale: int = 50, shift: int = 500):
+    image1 = np.zeros((1000, 1000), dtype=np.uint8)
+    imageBlack = Image.fromarray(image1)
+    for polygon_point in model.get_polygons_points():
+        part3_4(scale * polygon_point[0][0] + shift, -scale * polygon_point[0][1] + shift,
+                scale * polygon_point[1][0] + shift, -scale * polygon_point[1][1] + shift, imageBlack, 255)
+        part3_4(scale * polygon_point[1][0] + shift, -scale * polygon_point[1][1] + shift,
+                scale * polygon_point[2][0] + shift, -scale * polygon_point[2][1] + shift, imageBlack, 255)
+        part3_4(scale * polygon_point[0][0] + shift, -scale * polygon_point[0][1] + shift,
+                scale * polygon_point[2][0] + shift, -scale * polygon_point[2][1] + shift, imageBlack, 255)
+    imageBlack.save('poligon-st.png')
 
 
-# 3
-def line_v3(x0, y0, x1, y1, image3, color3):
-    step = False
-    if abs(x0 - x1) < abs(y0 - y1):
-        x0, y0 = y0, x0
-        x1, y1 = y1, x1
-        step = True
-    if x0 > x1:
-        x0, x1 = x1, x0
-        y0, y1 = y1, y0
-    x = x0
-    while x <= x1:
-        t = (x - x0) / float(x1 - x0)
-        y = int(y0 * (1. - t) + y1 * t)
-        if step:
-            image3.set(y, x, color3)
-        else:
-            image3.set(x, y, color3)
-        x = x + 1
-    return image3
-
-
-# 3
-def line_v4(x0, y0, x1, y1, image3, color3):
-    step = False
-    if abs(x0 - x1) < abs(y0 - y1):
-        x0, y0 = y0, x0
-        x1, y1 = y1, x1
-        step = True
-    if x0 > x1:
-        x0, x1 = x1, x0
-        y0, y1 = y1, y0
-    dx = x1 - x0
-    dy = y1 - y0
-    derror = abs(dy / float(dx))
-    error = 0
-    y = y0
-
-    x = x0
-    while x <= x1:
-        if step:
-            image3.set(y, x, color3)
-        else:
-            image3.set(x, y, color3)
-        error += derror
-        if error > .5:
-            y += (1 if y1 > y0 else -1)
-            error = error - 1
-        x = x + 1
-    return image3
-
-
-def draw_star_v1():
-    image = Image3(200, 200)
-    for i in range(0, 13):
-        image = line_v1(100, 100, int(100 + 95 * np.cos(2 * np.pi * i / 13)),
-                        int(100 + 95 * np.sin(2 * np.pi * i / 13)), image, Color3(0, 0, 0))
-    return image
-
-
-def draw_star_v2():
-    image = Image3(200, 200)
-    for i in range(0, 13):
-        image = line_v2(100, 100, int(100 + 95 * np.cos(2 * np.pi * i / 13)),
-                        int(100 + 95 * np.sin(2 * np.pi * i / 13)), image, Color3(0, 0, 0))
-    return image
-
-
-def draw_star_v3():
-    image = Image3(200, 200)
-    for i in range(0, 13):
-        image = line_v3(100, 100, int(100 + 95 * np.cos(2 * np.pi * i / 13)),
-                        int(100 + 95 * np.sin(2 * np.pi * i / 13)), image, Color3(0, 0, 0))
-    return image
-
-
-def draw_star_v4():
-    image = Image3(200, 200)
-    for i in range(0, 13):
-        image = line_v4(100, 100, int(100 + 95 * np.cos(2 * np.pi * i / 13)),
-                        int(100 + 95 * np.sin(2 * np.pi * i / 13)), image, Color3(0, 0, 0))
-    return image
-
-
-w, h = 200, 200
-matrix = np.zeros([w, h], dtype=np.uint8)
-matrix = np.matrix(matrix)
-black_img = Image.fromarray(matrix)
-black_img.show()
-
-for i in range(w):
-    matrix[i].fill(255)
-white_img = Image.fromarray(matrix)
-white_img.show()
-
-matrix = np.zeros([w, h, 3], dtype=np.uint8)
-matrix[:, :h] = [255, 0, 0]
-red_img = Image.fromarray(matrix)
-red_img.show()
-
-for i in range(w):
-    for j in range(h):
-        for k in range(3):
-            matrix[i, j, k] = (i + j + k) % 256
-
-gradient_img = Image.fromarray(matrix)
-gradient_img.show()
-
-# 3
-
-draw_star_v1().save('v1.png')
-draw_star_v2().save('v2.png')
-draw_star_v3().save('v3.png')
-draw_star_v4().save('v4.png')
-
-
-# 4,5
-obj3dmodel = OBJ3DModel('fox.obj')
+if __name__ == '__main__':
+    # -------------1-----------
+    part1(200, 200)
+    # #------------3-----------
+    image1 = np.zeros((200, 200), dtype=np.uint8)
+    imageBlack = Image.fromarray(image1)
+    part3_1(100, 100, imageBlack, color=255)
+    imageBlack = Image.fromarray(image1)
+    part3_2(100, 100, imageBlack, color=255)
+    imageBlack = Image.fromarray(image1)
+    part3_3(100, 100, imageBlack, color=255)
+    imageBlack = Image.fromarray(image1)
+    part3_4draw(imageBlack, color=255)
+    # -------------5-----------
+    obj3dmodel = OBJ3DModel('StormTrooper.obj')
+    part5(obj3dmodel, scale=100)
+    # --------------7-----------
+    part7(obj3dmodel, scale=100)
