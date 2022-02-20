@@ -211,10 +211,10 @@ gradient_img.show()
 
 # 3
 
-draw_star_v1().save('')
-draw_star_v2().save('')
-draw_star_v3().save('')
-draw_star_v4().save('')
+draw_star_v1().save('v1.png')
+draw_star_v2().save('v2.png')
+draw_star_v3().save('v3.png')
+draw_star_v4().save('v4.png')
 
 # 4,5
 obj3dmodel = OBJ3DModel('fox.obj')
