@@ -1,4 +1,5 @@
 from lab1.main import *
+from lab1.main import OBJ3DModel
 from lab2.main import *
 import numpy as np
 

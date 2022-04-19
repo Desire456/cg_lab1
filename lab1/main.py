@@ -1,42 +1,11 @@
 import math
-import random
 from typing import List
 
-from PIL import Image, ImageDraw
-import numpy as np
-from lab2.main import *
 from lab4.main import *
-
-
-class Point:
-    def __init__(self, x, y, z):
-        self.__x = x
-        self.__y = y
-        self.__z = z
-
-    @property
-    def x(self):
-        return self.__x
-
-    @property
-    def y(self):
-        return self.__y
-
-    @property
-    def z(self):
-        return self.__z
-
-    @x.setter
-    def x(self, value):
-        self.__x = value
-
-    @y.setter
-    def y(self, value):
-        self.__y = value
-
-    @z.setter
-    def z(self, value):
-        self.__z = value
+from module.Barycentric import barycentric_coordinates
+from module.ImagePoint import ImagePoint
+from module.OBJModel import OBJ3DModel
+from module.Point import Point
 
 
 def part1(rows, col):
@@ -58,103 +27,6 @@ def part1(rows, col):
     imageReg = Image.fromarray(image4)
     imageReg.save('../out/myReg.png')
 
-
-class Color3:
-    def __init__(self, r, g, b):
-        self.r = r
-        self.g = g
-        self.b = b
-
-    def r(self):
-        return self.r
-
-    def g(self):
-        return self.g
-
-    def b(self):
-        return self.b
-
-
-class Image3:
-    def __init__(self, w, h):
-        self.w = w
-        self.h = h
-        self.data = np.zeros(w * h, dtype=Color3)
-        self.initial_data()
-        self.z_matrix = np.zeros((w, h))
-
-    def set(self, x, y, color3):
-        self.data[x + y * self.w] = color3
-
-    def get(self, x, y):
-        return self.data[x + y * self.w]
-
-    def initial_data(self):
-        for i in range(self.w):
-            for j in range(self.h):
-                self.set(i, j, Color3(255, 255, 255))
-
-    def save(self, filename):
-        image_arr = np.zeros([self.w, self.h, 3], dtype=np.uint8)
-        for i in range(self.w):
-            for j in range(self.h):
-                for k in range(3):
-                    color3 = self.get(i, j)
-                    image_arr[i, j] = [color3.r, color3.g, color3.b]
-        Image.fromarray(image_arr).save(filename)
-
-    def draw_triangle(self, points: List[Point], normals: List):
-        if len(points) != 3:
-            raise Exception('Error', 'Incorrect count of points')
-
-        x_list = list(map(lambda e: round(e.x), points))
-        y_list = list(map(lambda e: round(e.y), points))
-        y_min = max(min(y_list), 0)
-        x_min = max(min(x_list), 0)
-        y_max = min(max(y_list), self.h)
-        x_max = min(max(x_list), self.w)
-
-        point1 = points[0]
-        point2 = points[1]
-        point3 = points[2]
-        n = np.cross([point2.x - point1.x, point2.y - point1.y, point2.z - point1.z],
-                     [point2.x - point3.x, point2.y - point3.y, point2.z - point3.z])
-        v = [0, 0, 1]
-        cos_alpha = (n @ v) / np.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2)
-        # cos_alpha = 0
-        if cos_alpha <= 0:
-            return
-        color = Color3(255 * abs(cos_alpha), 0, 0)
-        l0 = dot_product_norm(normals[0], v)
-        l1 = dot_product_norm(normals[1], v)
-        l2 = dot_product_norm(normals[2], v)
-        # try:
-        for x in range(round(x_min), round(x_max)+1):
-            for y in range(round(y_min), round(y_max)+1):
-                bc = barycentric_coordinates(float(x), float(y), point1.x, point1.y, point2.x, point2.y, point3.x, point3.y)
-                intencity = 255 * (bc[0] * l0 + bc[1] * l1 + bc[2] * l2)
-                # intencity = 1
-                color = Color3(intencity, intencity, intencity)
-                if np.all(bc >= 0):
-                    z_val = bc[0] * point1.z + bc[1] * point2.z + bc[2] * point3.z
-                    if z_val > self.z_matrix[x][y]:
-                        self.z_matrix[x][y] = z_val
-                        self.set(x, y, color)
-        # except Exception as e:
-        #     print(e.args)
-
-    def draw_polygons(self, points: List[Point], polygons: List, normals: List, id_normals: List):
-        for i in range(len(polygons)):
-            polygon1 = polygons[i][0]
-            polygon2 = polygons[i][1]
-            polygon3 = polygons[i][2]
-            normal1 = id_normals[i][0]
-            r_n1 = normals[normal1 - 1]
-            normal2 = id_normals[i][1]
-            r_n2 = normals[normal2 - 1]
-            normal3 = id_normals[i][2]
-            r_n3 = normals[normal3 - 1]
-            self.draw_triangle([points[polygon1 - 1], points[polygon2 - 1], points[polygon3 - 1]], [r_n1, r_n2, r_n3])
 
 
 def part3_1(x0, y0, image, color):
@@ -243,62 +115,6 @@ def part3_4draw(image, color):
         image.save('../out/var4.png')
 
 
-class OBJ3DModel:
-    def __init__(self, source_file_path):
-        self.__verticles = None
-        self.__polygons = None
-        self._normals = None
-        self._id_normals = None
-        self.source_file_path = source_file_path
-        self.parse()
-
-    def parse(self):
-        verticles = []
-        polygons = []
-        id_normals = []
-        normals = []
-        with open(self.source_file_path) as f:
-            lines = f.readlines()
-
-        f.close()
-
-        for line in lines:
-            if line.startswith('v '):
-                verticles.append(line.split()[1:])
-            if line.startswith('f '):
-                polygon_infos = line.split()[1:]
-                polygon = []
-                id_norm = []
-                for polygon_info in polygon_infos:
-                    polygon.append(int(polygon_info.split('/')[0]))
-                    id_norm.append(int(polygon_info.split('/')[2]))
-                id_normals.append(id_norm[:3])
-                polygons.append(polygon[:3])
-            if line.startswith('vn '):
-                normals.append(line.split()[1:])
-
-        verticles = list(map(lambda x: list(map(lambda b: float(b), x)), verticles))
-        normals = list(map(lambda x: list(map(lambda b: float(b), x)), normals))
-
-        self.__verticles = np.array(verticles)
-        self.__polygons = np.array(polygons)
-        self._normals = np.array(normals)
-        self._id_normals = np.array(id_normals)
-
-    def get_verticles(self):
-        return self.__verticles
-
-    def get_polygons(self):
-        return self.__polygons
-
-    def get_normals(self):
-        return self._normals
-
-    def get_id_normals(self):
-        return self._id_normals
-
-    def get_polygons_points(self):
-        return list(map(lambda x: list(map(lambda b: self.__verticles[b], x)), self.__polygons))
 
 
 def part5(model: OBJ3DModel, scale: int = 10, shift: int = 500):
